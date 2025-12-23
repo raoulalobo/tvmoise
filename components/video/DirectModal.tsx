@@ -31,6 +31,7 @@ interface DirectModalProps {
 
 export default function DirectModal({ isOpen, onClose }: DirectModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   /**
@@ -58,29 +59,74 @@ export default function DirectModal({ isOpen, onClose }: DirectModalProps) {
 
   /**
    * Détecter les changements de plein écran
+   * Écouter tous les événements de changement de plein écran pour compatibilité multi-navigateurs
    */
   useEffect(() => {
     const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
+      const isCurrentlyFullscreen = !!(
+        document.fullscreenElement ||
+        (document as any).webkitFullscreenElement ||
+        (document as any).mozFullScreenElement ||
+        (document as any).msFullscreenElement
+      );
+      setIsFullscreen(isCurrentlyFullscreen);
     };
 
+    // Écouter tous les événements de plein écran pour compatibilité
     document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+    document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
     };
   }, []);
 
   /**
    * Basculer le mode plein écran
+   * Sur mobile, utiliser l'élément vidéo directement pour une meilleure compatibilité
    */
   const toggleFullscreen = async () => {
-    if (!modalRef.current) return;
+    const videoElement = videoRef.current;
+    if (!videoElement) return;
 
     try {
+      // Détecter si on est sur mobile
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
       if (!document.fullscreenElement) {
-        await modalRef.current.requestFullscreen();
+        // Essayer différentes méthodes de plein écran selon le navigateur
+        if (isMobile && 'webkitEnterFullscreen' in videoElement) {
+          // iOS Safari - utilise l'API spécifique
+          (videoElement as any).webkitEnterFullscreen();
+        } else if (videoElement.requestFullscreen) {
+          // Navigateurs modernes
+          await videoElement.requestFullscreen();
+        } else if ((videoElement as any).webkitRequestFullscreen) {
+          // Safari et anciens navigateurs webkit
+          await (videoElement as any).webkitRequestFullscreen();
+        } else if ((videoElement as any).mozRequestFullScreen) {
+          // Firefox
+          await (videoElement as any).mozRequestFullScreen();
+        } else if ((videoElement as any).msRequestFullscreen) {
+          // IE/Edge
+          await (videoElement as any).msRequestFullscreen();
+        }
       } else {
-        await document.exitFullscreen();
+        // Quitter le plein écran
+        if (document.exitFullscreen) {
+          await document.exitFullscreen();
+        } else if ((document as any).webkitExitFullscreen) {
+          await (document as any).webkitExitFullscreen();
+        } else if ((document as any).mozCancelFullScreen) {
+          await (document as any).mozCancelFullScreen();
+        } else if ((document as any).msExitFullscreen) {
+          await (document as any).msExitFullscreen();
+        }
       }
     } catch (error) {
       console.error('Erreur plein écran:', error);
@@ -134,22 +180,11 @@ export default function DirectModal({ isOpen, onClose }: DirectModalProps) {
 
         {/* Lecteur vidéo Direct */}
         <SimpleVideoPlayer
+          ref={videoRef}
           streamUrl="/api/stream"
           title="🔴 EN DIRECT"
           className="w-full"
         />
-
-        {/* Informations sous le lecteur (cachées en plein écran) */}
-        {!isFullscreen && (
-          <div className="p-6 bg-arte-gray-darker">
-            <h2 className="text-arte-orange text-xl font-bold mb-2">
-              Diffusion en direct
-            </h2>
-            <p className="text-arte-gray-light text-sm">
-              Regardez le flux en direct de notre chaîne. Le streaming peut prendre quelques secondes pour démarrer.
-            </p>
-          </div>
-        )}
       </div>
     </div>
   );

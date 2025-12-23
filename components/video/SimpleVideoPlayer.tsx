@@ -1,11 +1,14 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, forwardRef } from 'react';
 
 /**
  * Composant SimpleVideoPlayer
  * Version simplifiée et fonctionnelle du lecteur vidéo
  * Basé sur le code de test qui fonctionne
+ *
+ * Expose la référence vidéo au parent via forwardRef
+ * pour permettre le plein écran sur mobile
  */
 
 interface SimpleVideoPlayerProps {
@@ -14,12 +17,12 @@ interface SimpleVideoPlayerProps {
   className?: string;
 }
 
-export default function SimpleVideoPlayer({
+const SimpleVideoPlayer = forwardRef<HTMLVideoElement, SimpleVideoPlayerProps>(({
   streamUrl,
   title = 'WebTV',
   className = '',
-}: SimpleVideoPlayerProps) {
-  const videoRef = useRef<HTMLVideoElement>(null);
+}, ref) => {
+  const internalVideoRef = useRef<HTMLVideoElement>(null);
   const playerRef = useRef<any>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [status, setStatus] = useState('Initialisation...');
@@ -30,7 +33,8 @@ export default function SimpleVideoPlayer({
         const mpegtsModule = await import('mpegts.js');
         const mpegts = mpegtsModule.default;
 
-        if (!videoRef.current) {
+        // Utiliser la ref interne pour accéder à l'élément vidéo
+        if (!internalVideoRef.current) {
           console.error('❌ Élément vidéo non trouvé');
           return;
         }
@@ -58,7 +62,7 @@ export default function SimpleVideoPlayer({
           }
         );
 
-        player.attachMediaElement(videoRef.current);
+        player.attachMediaElement(internalVideoRef.current);
         player.load();
 
         player.on('metadata_arrived', () => {
@@ -93,7 +97,7 @@ export default function SimpleVideoPlayer({
   }, [streamUrl]);
 
   const handlePlayPause = () => {
-    const video = videoRef.current;
+    const video = internalVideoRef.current;
     if (!video) return;
 
     if (isPlaying) {
@@ -110,13 +114,20 @@ export default function SimpleVideoPlayer({
       {/* Titre */}
       <div className="absolute top-0 left-0 right-0 z-20 px-6 py-4 bg-gradient-to-b from-black/80 to-transparent">
         <h1 className="text-white text-2xl font-bold">{title}</h1>
-        <p className="text-gray-300 text-sm">{status}</p>
       </div>
 
       {/* Lecteur vidéo */}
       <div className="aspect-video">
         <video
-          ref={videoRef}
+          ref={(element) => {
+            // Assigner à la fois à la ref interne et à la ref externe
+            (internalVideoRef as React.MutableRefObject<HTMLVideoElement | null>).current = element;
+            if (typeof ref === 'function') {
+              ref(element);
+            } else if (ref) {
+              (ref as React.MutableRefObject<HTMLVideoElement | null>).current = element;
+            }
+          }}
           className="w-full h-full"
           playsInline
           onPlay={() => setIsPlaying(true)}
@@ -163,4 +174,8 @@ export default function SimpleVideoPlayer({
       </div>
     </div>
   );
-}
+});
+
+SimpleVideoPlayer.displayName = 'SimpleVideoPlayer';
+
+export default SimpleVideoPlayer;
