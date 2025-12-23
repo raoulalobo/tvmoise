@@ -56,7 +56,7 @@ export default function VideoControls({
   const [quality, setQuality] = useState<'auto' | 'high' | 'medium' | 'low'>('auto');
 
   // Référence pour le timeout de fermeture du slider de volume
-  const volumeTimeoutRef = useRef<NodeJS.Timeout>();
+  const volumeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   /**
    * Gestion du volume
