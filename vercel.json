@@ -11,9 +11,5 @@
         { "key": "Access-Control-Allow-Headers", "value": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Range" }
       ]
     }
-  ],
-  "env": {
-    "YOUTUBE_CHANNEL_ID": "UCgbMr5u3tqXaUsRgjFJ7Ctw",
-    "YOUTUBE_CHANNEL_HANDLE": "@ChapelledelagloiredechristNet"
-  }
+  ]
 }
